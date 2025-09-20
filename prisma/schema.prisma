@@ -1,0 +1,139 @@
+// MVP28 Backend Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  wechatOpenid  String    @unique @map("wechat_openid")
+  wechatUnionid String?   @map("wechat_unionid")
+  nickname      String?
+  avatarUrl     String?   @map("avatar_url")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  sessions      Session[]
+  conversations Conversation[]
+  messages      Message[]
+  media         Media[]
+  locationLogs  LocationLog[]
+  payments      Payment[]
+  userQuotas    UserQuota[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  refreshToken String   @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  userId         String   @map("user_id")
+  role           String   // 'user' | 'assistant' | 'system'
+  content        String
+  model          String?  // 'gpt-4o-mini', 'claude-3-haiku', etc.
+  tokenCount     Int?     @map("token_count")
+  latencyMs      Int?     @map("latency_ms")
+  mediaUrls      Json?    @map("media_urls") // Array of media URLs
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  type         String   // 'image', 'file', 'audio', 'video'
+  originalName String   @map("original_name")
+  storagePath  String   @map("storage_path")
+  storageUrl   String   @map("storage_url")
+  sizeBytes    Int?     @map("size_bytes")
+  mimeType     String?  @map("mime_type")
+  metadata     Json?    // Additional metadata
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("media")
+}
+
+model LocationLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  latitude  Float
+  longitude Float
+  accuracy  Float?
+  timestamp DateTime @default(now())
+  metadata  Json?    // Additional location data
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("location_logs")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  orderNo       String   @unique @map("order_no")
+  provider      String   @default("wechat") // 'wechat', 'alipay' (future)
+  amount        Int      // Amount in cents (CNY fen)
+  currency      String   @default("CNY")
+  status        String   // 'pending', 'paid', 'failed', 'refunded'
+  prepayId      String?  @map("prepay_id") // WeChat Pay prepay_id
+  transactionId String?  @map("transaction_id") // WeChat transaction_id
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// Daily usage tracking for free quota
+model UserQuota {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  usedCount Int      @default(0) @map("used_count")
+  freeLimit Int      @default(20) @map("free_limit")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_quotas")
+}
