@@ -49,7 +49,14 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ Chat API Error:', error);
     
+    // 详细错误信息用于调试
     let errorMessage = 'AI service temporarily unavailable';
+    let debugInfo = {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    };
+    
     if (error.message?.includes('API key')) {
       errorMessage = 'API configuration error';
     } else if (error.message?.includes('quota')) {
@@ -58,6 +65,7 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       error: errorMessage,
+      debug: debugInfo,
       timestamp: new Date().toISOString()
     });
   }
