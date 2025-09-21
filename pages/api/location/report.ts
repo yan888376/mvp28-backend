@@ -55,10 +55,10 @@ async function locationHandler(req: NextApiRequest & { user: any }, res: NextApi
       success: true,
       data: {
         id: locationLog.id,
-        latitude: locationLog.lat,
-        longitude: locationLog.lng,
+        latitude: locationLog.latitude,
+        longitude: locationLog.longitude,
         accuracy: locationLog.accuracy,
-        timestamp: locationLog.ts,
+        timestamp: locationLog.timestamp,
         createdAt: locationLog.createdAt,
       },
     })
