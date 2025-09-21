@@ -4,7 +4,7 @@ import { streamText } from 'ai';
 
 export default async function handler(req, res) {
   // 检查API密钥配置
-  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   
   if (!apiKey) {
     return res.status(500).json({
