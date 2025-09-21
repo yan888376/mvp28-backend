@@ -94,10 +94,26 @@ async function chatHandler(req: NextApiRequest & { user: any }, res: NextApiResp
     }, requestId, 'Payment required for additional messages')
   }
 
+  // Get or create conversation
+  let conversation = await prisma.conversation.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: 'desc' }
+  })
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        userId,
+        title: 'New Chat'
+      }
+    })
+  }
+
   // Save user message to database
   try {
     const userMessage = await prisma.message.create({
       data: {
+        conversationId: conversation.id,
         userId,
         role: 'user',
         content: message,
@@ -147,6 +163,7 @@ async function chatHandler(req: NextApiRequest & { user: any }, res: NextApiResp
   try {
     aiMessage = await prisma.message.create({
       data: {
+        conversationId: conversation.id,
         userId,
         role: 'assistant',
         content: aiResponse.content,
