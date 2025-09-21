@@ -67,9 +67,9 @@ async function commitHandler(req: NextApiRequest & { user: any }, res: NextApiRe
       data: {
         id: mediaRecord.id,
         type: mediaRecord.type,
-        url: mediaRecord.url,
-        size: mediaRecord.size,
-        meta: mediaRecord.meta,
+        url: mediaRecord.storageUrl,
+        size: mediaRecord.sizeBytes,
+        meta: mediaRecord.metadata,
         createdAt: mediaRecord.createdAt,
       },
     })
