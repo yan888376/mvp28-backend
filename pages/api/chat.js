@@ -36,17 +36,24 @@ export default async function handler(req, res) {
       { role: 'user', content: message }
     ];
 
-    console.log(`📡 AI Chat Request: openai/${model}`, { messageCount: messages.length });
+    console.log(`📡 AI Chat Request: openai/${model}`, { 
+      messageCount: messages.length,
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey ? apiKey.length : 0
+    });
 
-    // Use Vercel AI SDK with OpenAI provider
+    const startTime = Date.now();
+    
+    // Use Vercel AI SDK with OpenAI provider - 减少token数量加快响应
     const result = await streamText({
       model: openai(model, { apiKey }),
       messages: messages,
-      maxTokens: 1000,
+      maxTokens: 500, // 减少到500 tokens加快响应
       temperature: 0.7,
     });
 
-    console.log('✅ AI response generated successfully');
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ AI response generated successfully in ${responseTime}ms`);
 
     // Convert the streaming result to a simple text response for our current miniprogram client
     const fullText = await result.text;
