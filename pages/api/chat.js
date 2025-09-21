@@ -3,6 +3,19 @@ import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 
 export default async function handler(req, res) {
+  // 检查API密钥配置
+  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    return res.status(500).json({
+      error: '(演示模式)请配置 API Key 以启用真实调用',
+      debug: {
+        availableEnvVars: Object.keys(process.env).filter(key => key.includes('API')),
+        message: 'Missing AI_GATEWAY_API_KEY or OPENAI_API_KEY'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -27,7 +40,7 @@ export default async function handler(req, res) {
 
     // Use Vercel AI SDK with OpenAI provider
     const result = await streamText({
-      model: openai(model),
+      model: openai(model, { apiKey }),
       messages: messages,
       maxTokens: 1000,
       temperature: 0.7,
