@@ -33,6 +33,7 @@ async function checkoutHandler(req: NextApiRequest & { user: any }, res: NextApi
     const payment = await prisma.payment.create({
       data: {
         userId,
+        orderNo,
         provider: 'wechat',
         amount,
         currency: 'CNY',
