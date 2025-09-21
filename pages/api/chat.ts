@@ -68,66 +68,81 @@ async function chatHandler(req: NextApiRequest & { user: any }, res: NextApiResp
     contextLength: context.length
   })
 
-  // Check user quota
-  const quotaStatus = await getUserQuotaStatus(userId)
-  const messageCost = calculateMessageCost(quotaStatus.hasExceeded)
+  // Skip quota check for anonymous users
+  let quotaStatus: any = null
+  let messageCost = 0
   
-  userLog(LogLevel.DEBUG, 'User quota checked', {
-    userId,
-    quotaStatus,
-    messageCost
-  })
-  
-  // If user has exceeded free quota and no payment is made, return payment required
-  if (quotaStatus.hasExceeded && messageCost > 0) {
-    userLog(LogLevel.WARN, 'User quota exceeded, payment required', {
+  if (!req.user.isAnonymous) {
+    // Check user quota for authenticated users
+    quotaStatus = await getUserQuotaStatus(userId)
+    messageCost = calculateMessageCost(quotaStatus.hasExceeded)
+    
+    userLog(LogLevel.DEBUG, 'User quota checked', {
       userId,
       quotaStatus,
-      costPerMessage: messageCost
+      messageCost
     })
     
-    return sendSuccess(res, {
-      quotaStatus,
-      costPerMessage: messageCost,
-      paymentUrl: `/api/pay/checkout?amount=${messageCost * 100}&type=message`,
-      paymentRequired: true
-    }, requestId, 'Payment required for additional messages')
+    // If user has exceeded free quota and no payment is made, return payment required
+    if (quotaStatus.hasExceeded && messageCost > 0) {
+      userLog(LogLevel.WARN, 'User quota exceeded, payment required', {
+        userId,
+        quotaStatus,
+        costPerMessage: messageCost
+      })
+      
+      return sendSuccess(res, {
+        quotaStatus,
+        costPerMessage: messageCost,
+        paymentUrl: `/api/pay/checkout?amount=${messageCost * 100}&type=message`,
+        paymentRequired: true
+      }, requestId, 'Payment required for additional messages')
+    }
+  } else {
+    userLog(LogLevel.DEBUG, 'Anonymous user, skipping quota check', { userId })
   }
 
-  // Get or create conversation
-  let conversation = await prisma.conversation.findFirst({
-    where: { userId },
-    orderBy: { updatedAt: 'desc' }
-  })
-
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        userId,
-        title: 'New Chat'
-      }
-    })
-  }
-
-  // Save user message to database
-  try {
-    const userMessage = await prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        userId,
-        role: 'user',
-        content: message,
-        model,
-      },
+  // Skip database operations for anonymous users
+  let conversation: any = null
+  
+  if (!req.user.isAnonymous) {
+    // Get or create conversation for authenticated users
+    conversation = await prisma.conversation.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' }
     })
 
-    userLog(LogLevel.DEBUG, 'User message saved to database', {
-      messageId: userMessage.id,
-      userId
-    })
-  } catch (error: any) {
-    userLog(LogLevel.ERROR, 'Failed to save user message', { userId, error: error.message })
-    throw BusinessErrors.openaiError('Failed to save message to database')
+    if (!conversation) {
+      conversation = await prisma.conversation.create({
+        data: {
+          userId,
+          title: 'New Chat'
+        }
+      })
+    }
+
+    // Save user message to database
+    try {
+      const userMessage = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          userId,
+          role: 'user',
+          content: message,
+          model,
+        },
+      })
+
+      userLog(LogLevel.DEBUG, 'User message saved to database', {
+        messageId: userMessage.id,
+        userId
+      })
+    } catch (error: any) {
+      userLog(LogLevel.ERROR, 'Failed to save user message', { userId, error: error.message })
+      throw BusinessErrors.openaiError('Failed to save message to database')
+    }
+  } else {
+    userLog(LogLevel.DEBUG, 'Anonymous user, skipping database save', { userId })
   }
 
   // Prepare messages for AI model
@@ -213,10 +228,24 @@ async function chatHandler(req: NextApiRequest & { user: any }, res: NextApiResp
   }, requestId, 'Chat completed successfully')
 }
 
-export default withErrorHandling(
-  withPerformanceMonitoring(
-    (req: NextApiRequest, res: NextApiResponse) => {
-      return withAuth(req, res, chatHandler)
+// 聊天处理器包装器 - 支持匿名和认证两种模式
+async function chatHandlerWrapper(req: NextApiRequest, res: NextApiResponse) {
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  
+  if (token) {
+    // 有token，使用认证模式
+    return withAuth(req, res, chatHandler)
+  } else {
+    // 无token，使用匿名模式
+    const anonymousReq = req as NextApiRequest & { user: any }
+    anonymousReq.user = { 
+      id: 'anonymous_' + Date.now(),
+      isAnonymous: true 
     }
-  )
+    return chatHandler(anonymousReq, res)
+  }
+}
+
+export default withErrorHandling(
+  withPerformanceMonitoring(chatHandlerWrapper)
 )
