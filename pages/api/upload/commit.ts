@@ -51,11 +51,12 @@ async function commitHandler(req: NextApiRequest & { user: any }, res: NextApiRe
         id: fileId,
         userId,
         type: fileType,
-        url: fileMetadata.url,
-        size,
-        meta: {
-          originalName,
-          mimeType,
+        storageUrl: fileMetadata.url,
+        sizeBytes: size,
+        originalName,
+        storagePath: `uploads/${fileId}`,
+        mimeType,
+        metadata: {
           uploadedAt: new Date().toISOString(),
         },
       },
