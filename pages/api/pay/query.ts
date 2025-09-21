@@ -48,7 +48,7 @@ async function queryHandler(req: NextApiRequest & { user: any }, res: NextApiRes
     let latestStatus = payment.status
     let wechatPayData = null
 
-    if (payment.status === 'pending' && payment.intentId) {
+    if (payment.status === 'pending' && payment.prepayId) {
       try {
         const wechatPay = new WeChatPayProvider()
         const orderNo = `MVT28_${payment.createdAt.getTime()}_${userId.substring(0, 8)}`

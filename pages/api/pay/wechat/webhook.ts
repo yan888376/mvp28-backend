@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Find payment record
       const existingPayment = await prisma.payment.findFirst({
         where: {
-          intentId: decryptedResource.prepay_id || '',
+          prepayId: decryptedResource.prepay_id || '',
           status: 'pending',
         },
       })
