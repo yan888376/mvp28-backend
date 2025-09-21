@@ -43,11 +43,11 @@ async function locationHandler(req: NextApiRequest & { user: any }, res: NextApi
     const locationLog = await prisma.locationLog.create({
       data: {
         userId,
-        lat: latitude,
-        lng: longitude,
+        latitude,
+        longitude,
         accuracy,
-        ts: timestamp ? new Date(timestamp) : new Date(),
-        extra,
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        metadata: extra,
       },
     })
 
