@@ -13,12 +13,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate dev",
-    "deploy": "npm run build && vercel --prod",
-    "test:smoke": "./scripts/smoke-test.sh",
-    "test:api": "node scripts/test-api.js",
-    "test:api:prod": "node scripts/test-api.js https://api.mornhub.net",
-    "test:local": "npm run test:api http://localhost:3001",
-    "postbuild": "prisma generate"
+    "deploy": "npm run build && vercel --prod"
   },
   "dependencies": {
     "next": "^14.0.0",
