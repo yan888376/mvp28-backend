@@ -44,12 +44,12 @@ export default async function handler(req, res) {
 
     const startTime = Date.now();
     
-    // Use Vercel AI SDK with OpenAI provider - 减少token数量加快响应
+    // Use Vercel AI SDK with OpenAI provider - 优化响应速度
     const result = await streamText({
-      model: openai(model, { apiKey }),
-      messages: messages,
-      maxTokens: 500, // 减少到500 tokens加快响应
-      temperature: 0.7,
+      model: openai('gpt-3.5-turbo', { apiKey }), // 强制使用更快的模型
+      messages: messages.slice(-1), // 只保留最后一条消息，减少上下文
+      maxTokens: 200, // 进一步减少到200 tokens
+      temperature: 0.3, // 降低温度提高响应速度
     });
 
     const responseTime = Date.now() - startTime;
