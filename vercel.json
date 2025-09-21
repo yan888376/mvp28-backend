@@ -1,13 +1,4 @@
 {
-  "version": 2,
-  "functions": {
-    "pages/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    },
-    "pages/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
