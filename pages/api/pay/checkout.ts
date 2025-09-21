@@ -37,7 +37,7 @@ async function checkoutHandler(req: NextApiRequest & { user: any }, res: NextApi
         amount,
         currency: 'CNY',
         status: 'pending',
-        intentId: '', // Will be updated with prepay_id
+        prepayId: '', // Will be updated with prepay_id
       },
     })
 
@@ -55,7 +55,7 @@ async function checkoutHandler(req: NextApiRequest & { user: any }, res: NextApi
       // Update payment with prepay_id
       await prisma.payment.update({
         where: { id: payment.id },
-        data: { intentId: orderResult.prepayId },
+        data: { prepayId: orderResult.prepayId },
       })
 
       res.status(200).json({
