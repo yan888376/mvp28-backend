@@ -27,16 +27,26 @@ export default async function handler(req, res) {
       databaseStatus = 'error';
     }
 
-    // 测试 OpenAI 连接状态
-    let openaiStatus = 'unknown';
+    // 测试 AI Gateway 和 OpenAI 连接状态
+    let aiStatus = 'unknown';
+    let gatewayStatus = 'unknown';
     try {
-      if (process.env.OPENAI_API_KEY) {
-        openaiStatus = 'configured';
+      const gatewayKey = process.env.AI_GATEWAY_API_KEY;
+      const openaiKey = process.env.OPENAI_API_KEY;
+      
+      if (gatewayKey) {
+        gatewayStatus = 'configured';
+        aiStatus = 'ai_gateway';
+      } else if (openaiKey) {
+        gatewayStatus = 'fallback_to_openai';
+        aiStatus = 'openai_direct';
       } else {
-        openaiStatus = 'not_configured';
+        gatewayStatus = 'not_configured';
+        aiStatus = 'not_configured';
       }
     } catch (error) {
-      openaiStatus = 'error';
+      gatewayStatus = 'error';
+      aiStatus = 'error';
     }
 
     // 测试微信配置
@@ -69,7 +79,8 @@ export default async function handler(req, res) {
         environment: process.env.NODE_ENV || 'development',
         services: {
           database: databaseStatus,
-          openai: openaiStatus,
+          ai_service: aiStatus,
+          ai_gateway: gatewayStatus,
           wechat: wechatStatus,
           supabase: supabaseStatus
         },

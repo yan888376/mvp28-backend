@@ -1,21 +1,7 @@
-// AI Chat API using Vercel AI SDK
-import { openai } from '@ai-sdk/openai';
+// AI Chat API using Vercel AI Gateway - 官方标准实现
 import { streamText } from 'ai';
 
 export default async function handler(req, res) {
-  // 检查API密钥配置
-  const apiKey = process.env.OPENAI_API_KEY;
-  
-  if (!apiKey) {
-    return res.status(500).json({
-      error: '(演示模式)请配置 API Key 以启用真实调用',
-      debug: {
-        availableEnvVars: Object.keys(process.env).filter(key => key.includes('API')),
-        message: 'Missing AI_GATEWAY_API_KEY or OPENAI_API_KEY'
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -27,48 +13,61 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Prepare messages for AI model
+    // 检查AI Gateway API Key
+    const gatewayKey = process.env.AI_GATEWAY_API_KEY;
+    if (!gatewayKey) {
+      return res.status(500).json({
+        error: '(演示模式)请配置 AI Gateway API Key',
+        debug: {
+          availableEnvVars: Object.keys(process.env).filter(key => key.includes('API')),
+          message: 'Missing AI_GATEWAY_API_KEY'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 构建消息 - 优化上下文处理
     const messages = [
-      ...context.map(msg => ({
+      ...context.slice(-2).map(msg => ({
         role: msg.role,
         content: msg.content
       })),
       { role: 'user', content: message }
     ];
 
-    console.log(`📡 AI Chat Request: openai/${model}`, { 
+    console.log(`📡 AI Gateway Request: openai/${model}`, { 
       messageCount: messages.length,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey ? apiKey.length : 0
+      hasGatewayKey: !!gatewayKey
     });
 
     const startTime = Date.now();
     
-    // Use Vercel AI SDK with OpenAI provider - 优化响应速度
+    // 使用Vercel AI Gateway - 按照官方标准
     const result = await streamText({
-      model: openai('gpt-3.5-turbo', { apiKey }), // 强制使用更快的模型
-      messages: messages.slice(-1), // 只保留最后一条消息，减少上下文
-      maxTokens: 200, // 进一步减少到200 tokens
-      temperature: 0.3, // 降低温度提高响应速度
+      model: `openai/${model}`, // AI Gateway格式
+      messages: messages,
+      maxTokens: 300,
+      temperature: 0.7,
     });
 
     const responseTime = Date.now() - startTime;
-    console.log(`✅ AI response generated successfully in ${responseTime}ms`);
+    console.log(`✅ AI Gateway response in ${responseTime}ms`);
 
-    // Convert the streaming result to a simple text response for our current miniprogram client
+    // 获取完整文本响应
     const fullText = await result.text;
     
     return res.status(200).json({
       success: true,
       data: {
         content: fullText,
-        model: model,
+        model: `openai/${model}`,
+        responseTime: `${responseTime}ms`,
         timestamp: new Date().toISOString()
       }
     });
 
   } catch (error) {
-    console.error('❌ Chat API Error:', error);
+    console.error('❌ AI Gateway Error:', error);
     
     // 详细错误信息用于调试
     let errorMessage = 'AI service temporarily unavailable';
