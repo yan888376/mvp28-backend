@@ -196,19 +196,20 @@ async function chatHandler(req: NextApiRequest & { user: any }, res: NextApiResp
     // 不抛出错误，因为AI已经生成了响应
   }
 
-  // Update user quota (only if not in fallback mode)
-  if (aiResponse.model !== 'fallback') {
+  // Update user quota (only if not in fallback mode and not anonymous)
+  let updatedQuotaStatus = quotaStatus
+  if (!req.user.isAnonymous && aiResponse.model !== 'fallback') {
     try {
       await incrementUserQuota(userId)
       userLog(LogLevel.DEBUG, 'User quota incremented', { userId })
+      
+      // Get updated quota status
+      updatedQuotaStatus = await getUserQuotaStatus(userId)
     } catch (error: any) {
       userLog(LogLevel.WARN, 'Failed to update user quota', { userId, error: error.message })
       // 不影响响应，配额更新失败不是关键错误
     }
   }
-
-  // Get updated quota status
-  const updatedQuotaStatus = await getUserQuotaStatus(userId)
 
   userLog(LogLevel.INFO, 'Chat request completed successfully', {
     userId,
