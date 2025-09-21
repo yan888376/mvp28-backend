@@ -109,7 +109,9 @@ export default async function handler(req, res) {
 
     console.log(`🤖 Multi-GPT Request: ${model}`, { 
       messageLength: message.length,
-      contextLength: context.length
+      contextLength: context.length,
+      hasApiKey: !!API_PROVIDERS.openai.apiKey,
+      apiKeyLength: API_PROVIDERS.openai.apiKey ? API_PROVIDERS.openai.apiKey.length : 0
     });
 
     // 选择最佳API提供商
