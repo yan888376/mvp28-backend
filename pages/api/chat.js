@@ -1,4 +1,5 @@
-// AI Chat API using Vercel AI Gateway
+// AI Chat API using Vercel AI SDK
+import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 
 export default async function handler(req, res) {
@@ -24,9 +25,9 @@ export default async function handler(req, res) {
 
     console.log(`📡 AI Chat Request: openai/${model}`, { messageCount: messages.length });
 
-    // Use Vercel AI Gateway with correct model format
+    // Use Vercel AI SDK with OpenAI provider
     const result = await streamText({
-      model: `openai/${model}`,
+      model: openai(model),
       messages: messages,
       maxTokens: 1000,
       temperature: 0.7,
