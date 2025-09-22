@@ -51,6 +51,14 @@ const MODEL_REGISTRY = {
     endpoint: "/chat/completions",
     gatewayPath: "/groq/v1",
     directURL: "https://api.groq.com/openai/v1"
+  },
+  
+  // Multi-GPT (H1) 智能路由 - 映射到最佳可用模型
+  "Multi-GPT (H1)": {
+    provider: "openai",
+    endpoint: "/chat/completions",
+    gatewayPath: "/openai/v1", 
+    directURL: "https://api.openai.com/v1"
   }
 };
 
@@ -89,7 +97,12 @@ const MODEL_NAME_MAPPING = {
   
   // Groq 模型
   'groq-llama3-70b': 'groq-llama3-70b',
-  'Groq Llama3 70B': 'groq-llama3-70b'
+  'Groq Llama3 70B': 'groq-llama3-70b',
+  
+  // Multi-GPT (H1) 映射
+  'Multi-GPT (H1)': 'Multi-GPT (H1)',
+  'multi-gpt-h1': 'Multi-GPT (H1)',
+  'Multi-GPT H1': 'Multi-GPT (H1)'
 };
 
 // 标准化模型名称
@@ -180,10 +193,23 @@ function getAPIConfig(model) {
   return config;
 }
 
+// 获取上游模型名称
+function getUpstreamModel(model, provider) {
+  // Multi-GPT (H1) 映射到最佳可用模型
+  if (model === 'Multi-GPT (H1)') {
+    return 'gpt-4o-mini'; // 默认使用最稳定的模型
+  }
+  
+  // 其他模型直接使用标准化后的名称
+  return model;
+}
+
 // 构建请求体
 function buildRequestBody(messages, model, provider) {
+  const upstreamModel = getUpstreamModel(model, provider);
+  
   const baseBody = {
-    model: model,
+    model: upstreamModel,
     max_tokens: 1000,
     temperature: 0.7
   };
@@ -238,6 +264,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ 
       error: 'METHOD_NOT_ALLOWED',
       traceId 
+    });
+  }
+
+  // 环境变量检查和调试日志
+  const gatewayMode = process.env.USE_GATEWAY === 'true';
+  const hasGatewayToken = !!process.env.AI_GATEWAY_TOKEN;
+  const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+  
+  console.log(`🔧 [${traceId}] Environment check:`, {
+    gatewayMode,
+    hasGatewayToken,
+    hasOpenAIKey,
+    openaiKeyLength: process.env.OPENAI_API_KEY?.length || 0,
+    gatewayTokenPrefix: process.env.AI_GATEWAY_TOKEN?.slice(0, 6) || 'none'
+  });
+  
+  // 检查必需的环境变量
+  if (gatewayMode && !hasGatewayToken) {
+    return res.status(400).json({
+      error: 'CONFIGURATION_ERROR',
+      detail: 'AI_GATEWAY_TOKEN not configured for gateway mode',
+      traceId
+    });
+  }
+  
+  if (!gatewayMode && !hasOpenAIKey) {
+    return res.status(400).json({
+      error: 'CONFIGURATION_ERROR', 
+      detail: 'OPENAI_API_KEY not configured for direct mode',
+      traceId
     });
   }
 
