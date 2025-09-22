@@ -54,6 +54,74 @@ const MODEL_REGISTRY = {
   }
 };
 
+// 模型名称标准化映射
+const MODEL_NAME_MAPPING = {
+  // OpenAI 模型各种写法
+  'gpt-4o-mini': 'gpt-4o-mini',
+  'GPT-4o Mini': 'gpt-4o-mini',
+  'GPT-4o-mini': 'gpt-4o-mini',
+  'gpt4o-mini': 'gpt-4o-mini',
+  
+  'gpt-4o': 'gpt-4o',
+  'GPT-4o': 'gpt-4o',
+  'GPT4o': 'gpt-4o',
+  'gpt4o': 'gpt-4o',
+  
+  'gpt-3.5-turbo': 'gpt-3.5-turbo',
+  'GPT-3.5 Turbo': 'gpt-3.5-turbo',
+  'GPT-3.5-Turbo': 'gpt-3.5-turbo',
+  'gpt35turbo': 'gpt-3.5-turbo',
+  'gpt-35-turbo': 'gpt-3.5-turbo',
+  
+  // Anthropic 模型
+  'claude-3-haiku': 'claude-3-haiku',
+  'Claude 3 Haiku': 'claude-3-haiku',
+  'Claude-3-Haiku': 'claude-3-haiku',
+  
+  'claude-3-sonnet': 'claude-3-sonnet',
+  'Claude 3 Sonnet': 'claude-3-sonnet',
+  'Claude-3-Sonnet': 'claude-3-sonnet',
+  
+  // Google 模型
+  'gemini-1.5-flash': 'gemini-1.5-flash',
+  'Gemini 1.5 Flash': 'gemini-1.5-flash',
+  'Gemini-1.5-Flash': 'gemini-1.5-flash',
+  
+  // Groq 模型
+  'groq-llama3-70b': 'groq-llama3-70b',
+  'Groq Llama3 70B': 'groq-llama3-70b'
+};
+
+// 标准化模型名称
+function normalizeModelName(modelName) {
+  if (!modelName) return 'gpt-4o-mini'; // 默认模型
+  
+  // 直接匹配
+  if (MODEL_NAME_MAPPING[modelName]) {
+    return MODEL_NAME_MAPPING[modelName];
+  }
+  
+  // 忽略大小写匹配
+  const lowerModel = modelName.toLowerCase();
+  for (const [key, value] of Object.entries(MODEL_NAME_MAPPING)) {
+    if (key.toLowerCase() === lowerModel) {
+      return value;
+    }
+  }
+  
+  // 模糊匹配（去除空格、连字符、点号）
+  const normalizedInput = modelName.toLowerCase().replace(/[\s\-\.]/g, '');
+  for (const [key, value] of Object.entries(MODEL_NAME_MAPPING)) {
+    const normalizedKey = key.toLowerCase().replace(/[\s\-\.]/g, '');
+    if (normalizedKey === normalizedInput) {
+      return value;
+    }
+  }
+  
+  // 如果都匹配不上，返回原值（让后续报错）
+  return modelName;
+}
+
 // 获取API配置
 function getAPIConfig(model) {
   const modelConfig = MODEL_REGISTRY[model];
@@ -176,6 +244,11 @@ export default async function handler(req, res) {
   try {
     const { message, messages, model = 'gpt-4o-mini', context = [] } = req.body;
     
+    // 标准化模型名称
+    const normalizedModel = normalizeModelName(model);
+    
+    console.log(`🔄 [${traceId}] Model normalization: "${model}" → "${normalizedModel}"`);
+    
     // 兼容两种请求格式
     let finalMessages = [];
     if (messages) {
@@ -193,16 +266,16 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`🚀 [${traceId}] Multi-chat request: model=${model}, messages=${finalMessages.length}`);
+    console.log(`🚀 [${traceId}] Multi-chat request: model=${normalizedModel}, messages=${finalMessages.length}`);
 
     // 获取API配置
-    const config = getAPIConfig(model);
+    const config = getAPIConfig(normalizedModel);
     const fullURL = `${config.baseURL}${config.endpoint}`;
     
     console.log(`🎯 [${traceId}] Config: provider=${config.provider}, mode=${config.useGateway ? 'gateway' : 'direct'}, url=${fullURL}`);
 
     // 构建请求体
-    const requestBody = buildRequestBody(finalMessages, model, config.provider);
+    const requestBody = buildRequestBody(finalMessages, normalizedModel, config.provider);
     
     // 调用上游API
     const response = await fetch(fullURL, {
@@ -254,7 +327,7 @@ export default async function handler(req, res) {
       success: true,
       data: {
         content,
-        model,
+        model: normalizedModel,
         provider: config.provider,
         mode: config.useGateway ? 'gateway' : 'direct',
         latency: `${latency}ms`,
